@@ -1,0 +1,4 @@
+FROM scratch
+
+COPY ./bin/ebgp-processor /ebgp-processor
+ENTRYPOINT ["/ebgp-processor"]
