@@ -7,15 +7,6 @@ import (
 	"github.com/sbezverk/gobmp/pkg/srv6"
 )
 
-type duplicatePeer struct {
-	Key       string `json:"_key,omitempty"`
-	LocalASN  uint32 `json:"local_asn"`
-	RemoteASN uint32 `json:"remote_asn"`
-	LocalIP   string `json:"local_ip"`
-	RemoteIP  string `json:"remote_ip"`
-	Name      string `json:"name,omitempty"`
-}
-
 type inetPrefix struct {
 	Key       string `json:"_key,omitempty"`
 	Prefix    string `json:"prefix,omitempty"`

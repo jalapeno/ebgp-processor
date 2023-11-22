@@ -15,6 +15,7 @@ var (
 	topics = map[string]dbclient.CollectionType{
 		kafkanotifier.UnicastPrefixV4EventTopic: bmp.UnicastPrefixV4Msg,
 		kafkanotifier.UnicastPrefixV6EventTopic: bmp.UnicastPrefixV6Msg,
+		kafkanotifier.PeerEventTopic:            bmp.PeerStateChangeMsg,
 	}
 )
 

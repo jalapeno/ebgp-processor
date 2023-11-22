@@ -202,8 +202,8 @@ func (a *arangoDB) StoreMessage(msgType dbclient.CollectionType, msg []byte) err
 	}
 	event.TopicType = msgType
 	switch msgType {
-	// case bmp.PeerStateChangeMsg:
-	// 	return a.peerHandler(event)
+	case bmp.PeerStateChangeMsg:
+		return a.peerHandler(event)
 	case bmp.UnicastPrefixV4Msg:
 		return a.unicastV4Handler(event)
 	case bmp.UnicastPrefixV6Msg:
