@@ -2,6 +2,7 @@ package arangodb
 
 import (
 	"github.com/sbezverk/gobmp/pkg/base"
+	"github.com/sbezverk/gobmp/pkg/bgp"
 	"github.com/sbezverk/gobmp/pkg/bgpls"
 	"github.com/sbezverk/gobmp/pkg/sr"
 	"github.com/sbezverk/gobmp/pkg/srv6"
@@ -53,4 +54,12 @@ type LSNodeExt struct {
 	PrefixSID            []*sr.PrefixSIDTLV              `json:"prefix_sid_tlv,omitempty"`
 	FlexAlgoPrefixMetric []*bgpls.FlexAlgoPrefixMetric   `json:"flex_algo_prefix_metric,omitempty"`
 	SRv6SID              string                          `json:"srv6_sid,omitempty"`
+}
+
+type ebgpPeer struct {
+	Key             string         `json:"_key,omitempty"`
+	ID              string         `json:"_id,omitempty"`
+	BGPRouterID     string         `json:"router_id,omitempty"`
+	ASN             int32          `json:"asn"`
+	AdvCapabilities bgp.Capability `json:"adv_cap,omitempty"`
 }

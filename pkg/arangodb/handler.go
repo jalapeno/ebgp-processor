@@ -34,7 +34,7 @@ func (a *arangoDB) peerHandler(obj *notifier.EventMessage) error {
 		if obj.Action != "del" {
 			return fmt.Errorf("document %s not found but Action is not \"del\", possible stale event", obj.Key)
 		}
-		return a.processPeerRemoval(ctx, obj.Key, &o)
+		return a.processPeerSessionRemoval(ctx, obj.Key, &o)
 	}
 	switch obj.Action {
 	case "add":

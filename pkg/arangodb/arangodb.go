@@ -19,6 +19,8 @@ type arangoDB struct {
 	peer            driver.Collection
 	ebgpPeerV4      driver.Collection
 	ebgpPeerV6      driver.Collection
+	ebgpSessionV4   driver.Collection
+	ebgpSessionV6   driver.Collection
 	unicastprefixV4 driver.Collection
 	unicastprefixV6 driver.Collection
 	inetprefixV4    driver.Collection
@@ -26,8 +28,8 @@ type arangoDB struct {
 }
 
 // NewDBSrvClient returns an instance of a DB server client process
-func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgpPeerV6 string, unicastprefixV4, unicastprefixV6,
-	inetprefixV4 string, inetprefixV6 string) (dbclient.Srv, error) {
+func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgpPeerV6 string, ebgpSessionV4 string,
+	ebgpSessionV6 string, unicastprefixV4, unicastprefixV6, inetprefixV4 string, inetprefixV6 string) (dbclient.Srv, error) {
 	if err := tools.URLAddrValidation(arangoSrv); err != nil {
 		return nil, err
 	}
@@ -92,6 +94,36 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		}
 	}
 
+	// check for ebgp_peer_v4 collection
+	found, err = arango.db.CollectionExists(context.TODO(), ebgpSessionV4)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), ebgpSessionV4)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for ebgp_peer_v6 collection
+	found, err = arango.db.CollectionExists(context.TODO(), ebgpSessionV6)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), ebgpSessionV6)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
 	// check for inet4 collection
 	found, err = arango.db.CollectionExists(context.TODO(), inetprefixV4)
 	if err != nil {
@@ -136,6 +168,30 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 	// create ebgp_peer_v4 edge collection
 	var ebgpPeerV6_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.ebgpPeerV6, err = arango.db.CreateCollection(context.TODO(), "ebgp_peer_v6", ebgpPeerV6_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.ebgpPeerV4, err = arango.db.Collection(context.TODO(), ebgpPeerV4)
+	if err != nil {
+		return nil, err
+	}
+
+	// create ebgp_peer_v4 edge collection
+	var ebgpSessionV4_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.ebgpSessionV4, err = arango.db.CreateCollection(context.TODO(), "ebgp_session_v4", ebgpSessionV4_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.ebgpSessionV4, err = arango.db.Collection(context.TODO(), ebgpSessionV4)
+	if err != nil {
+		return nil, err
+	}
+
+	// create ebgp_peer_v4 edge collection
+	var ebgpSessionV6_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.ebgpSessionV6, err = arango.db.CreateCollection(context.TODO(), "ebgp_session_v6", ebgpSessionV6_options)
 	if err != nil {
 		return nil, err
 	}
@@ -224,9 +280,9 @@ func (a *arangoDB) monitor() {
 func (a *arangoDB) loadCollection() error {
 	ctx := context.TODO()
 
-	glog.Infof("copying ipv4 eBGP peers to ebgp_peer_v4 collection")
+	glog.Infof("copying ipv4 eBGP peer sessions to ebgp_session_v4 collection")
 	peer_query := "for l in peer filter l._key !like " + "\"%:%\"" +
-		"filter l.remote_asn != l.local_asn insert l in ebgp_peer_v4"
+		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v4"
 	cursor, err := a.db.Query(ctx, peer_query, nil)
 	if err != nil {
 		return err
@@ -234,19 +290,19 @@ func (a *arangoDB) loadCollection() error {
 	defer cursor.Close()
 
 	// remove internal peer entries from collection
-	glog.Infof("removing any internal v4 peers that got copied over to ebgp_peer_v4 collection")
+	glog.Infof("removing any internal v4 sessions that got copied over to ebgp_session_v4 collection")
 	dup_query := "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
 		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-		"FOR d IN duplicates FOR m IN ebgp_peer_v4 FILTER d.asn == m.remote_asn remove m in ebgp_peer_v4"
+		"FOR d IN duplicates FOR m IN ebgp_session_v4 FILTER d.asn == m.remote_asn remove m in ebgp_session_v4"
 	pcursor, err := a.db.Query(ctx, dup_query, nil)
 	if err != nil {
 		return err
 	}
 	defer pcursor.Close()
 
-	glog.Infof("copying ipv6 eBGP peers to ebgp_peer_v4 collection")
+	glog.Infof("copying ipv6 eBGP v6 sessions to ebgp_session_v6 collection")
 	peerv6_query := "for l in peer filter l._key like " + "\"%:%\"" +
-		"filter l.remote_asn != l.local_asn insert l in ebgp_peer_v6"
+		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v6"
 	cursor, err = a.db.Query(ctx, peerv6_query, nil)
 	if err != nil {
 		return err
@@ -254,15 +310,35 @@ func (a *arangoDB) loadCollection() error {
 	defer cursor.Close()
 
 	// remove internal peer entries from  collection
-	glog.Infof("removing any internal v6 peers that got copied over to ebgp_peer_v4 collection")
+	glog.Infof("removing any internal v6 sessions that got copied over to ebgp_session_v4 collection")
 	dup_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
 		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-		"FOR d IN duplicates FOR m IN ebgp_peer_v6 FILTER d.asn == m.remote_asn remove m in ebgp_peer_v6"
+		"FOR d IN duplicates FOR m IN ebgp_session_v6 FILTER d.asn == m.remote_asn remove m in ebgp_session_v6"
 	pcursor, err = a.db.Query(ctx, dup_query, nil)
 	if err != nil {
 		return err
 	}
 	defer pcursor.Close()
+
+	glog.Infof("copying unique ebgp peers into ebgp_peer_v4 collection")
+	peer_query = "for l in ebgp_session_v4 " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
+		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO ebgp_peer_v4 OPTIONS { ignoreErrors: true }"
+	cursor, err = a.db.Query(ctx, peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
+	glog.Infof("copying unique ebgp peers into ebgp_peer_v6 collection")
+	peer_query = "for l in ebgp_session_v6 " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
+		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO ebgp_peer_v6 OPTIONS { ignoreErrors: true }"
+	cursor, err = a.db.Query(ctx, peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
 
 	glog.Infof("copying unicast v4 prefixes into inet_prefix_v4 collection")
 	prefix_query := "for l in unicast_prefix_v4 filter l.prefix_len < 26 " +

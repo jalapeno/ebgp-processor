@@ -15,28 +15,70 @@ func (a *arangoDB) processebgpPeer(ctx context.Context, key, id string, e messag
 	if e.RemoteASN == e.LocalASN {
 		glog.Infof("ibgp peer, no processing needed: %+v", e.Key)
 		return nil
-	}
-	if strings.Contains(e.Key, ":") {
+	} else {
+		//if strings.Contains(e.Key, ":") {
 
-		if _, err := a.ebgpPeerV6.CreateDocument(ctx, &e); err != nil {
+		obj := ebgpPeer{
+			Key:             e.RemoteBGPID + "_" + strconv.Itoa(int(e.RemoteASN)),
+			BGPRouterID:     e.RemoteBGPID,
+			ASN:             int32(e.RemoteASN),
+			AdvCapabilities: e.AdvCapabilities,
+		}
+
+		if _, err := a.ebgpPeerV4.CreateDocument(ctx, &obj); err != nil {
 			if !driver.IsConflict(err) {
 				return err
 			}
 		}
 		// The document already exists, updating it with the latest info
-		if _, err := a.ebgpPeerV6.UpdateDocument(ctx, e.Key, &e); err != nil {
+		if _, err := a.ebgpPeerV4.UpdateDocument(ctx, e.Key, &obj); err != nil {
+			if !driver.IsConflict(err) {
+				return err
+			}
+		}
+		//} else {
+		if _, err := a.ebgpPeerV6.CreateDocument(ctx, &obj); err != nil {
+			if !driver.IsConflict(err) {
+				return err
+			}
+		}
+		// The document already exists, updating it with the latest info
+		if _, err := a.ebgpPeerV6.UpdateDocument(ctx, e.Key, &obj); err != nil {
+			if !driver.IsConflict(err) {
+				return err
+			}
+		}
+	}
+	return a.processebgpSession(ctx, key, id, e)
+}
+
+func (a *arangoDB) processebgpSession(ctx context.Context, key, id string, e message.PeerStateChange) error {
+	glog.Infof("processing bgp session %+v", e)
+	if e.RemoteASN == e.LocalASN {
+		glog.Infof("ibgp peer, no processing needed: %+v", e.Key)
+		return nil
+	}
+	if strings.Contains(e.Key, ":") {
+
+		if _, err := a.ebgpSessionV6.CreateDocument(ctx, &e); err != nil {
+			if !driver.IsConflict(err) {
+				return err
+			}
+		}
+		// The document already exists, updating it with the latest info
+		if _, err := a.ebgpSessionV6.UpdateDocument(ctx, e.Key, &e); err != nil {
 			if !driver.IsConflict(err) {
 				return err
 			}
 		}
 	} else {
-		if _, err := a.ebgpPeerV4.CreateDocument(ctx, &e); err != nil {
+		if _, err := a.ebgpSessionV4.CreateDocument(ctx, &e); err != nil {
 			if !driver.IsConflict(err) {
 				return err
 			}
 		}
 		// The document already exists, updating it with the latest info
-		if _, err := a.ebgpPeerV4.UpdateDocument(ctx, e.Key, &e); err != nil {
+		if _, err := a.ebgpSessionV4.UpdateDocument(ctx, e.Key, &e); err != nil {
 			if !driver.IsConflict(err) {
 				return err
 			}
@@ -46,11 +88,11 @@ func (a *arangoDB) processebgpPeer(ctx context.Context, key, id string, e messag
 }
 
 // process Removal removes records from the inetprefixV4 collection
-func (a *arangoDB) processPeerRemoval(ctx context.Context, key string, e *message.PeerStateChange) error {
+func (a *arangoDB) processPeerSessionRemoval(ctx context.Context, key string, e *message.PeerStateChange) error {
 
 	if strings.Contains(e.Key, ":") {
 		glog.Infof("removing v6 peer %+v", e.Key)
-		query := "for d in " + a.ebgpPeerV6.Name() +
+		query := "for d in " + a.ebgpSessionV6.Name() +
 			" filter d.remote_ip == " + "\"" + e.RemoteIP + "\""
 		query += " return d"
 		ncursor, err := a.db.Query(ctx, query, nil)
@@ -76,7 +118,7 @@ func (a *arangoDB) processPeerRemoval(ctx context.Context, key string, e *messag
 		}
 	} else {
 		glog.Infof("removing v4 peer %+v", e.Key)
-		query := "for d in " + a.ebgpPeerV4.Name() +
+		query := "for d in " + a.ebgpSessionV4.Name() +
 			" filter d.remote_ip == " + "\"" + e.RemoteIP + "\""
 		query += " return d"
 		ncursor, err := a.db.Query(ctx, query, nil)

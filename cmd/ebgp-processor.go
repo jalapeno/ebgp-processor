@@ -35,6 +35,8 @@ var (
 	peer            string
 	ebgpPeerV4      string
 	ebgpPeerV6      string
+	ebgpSessionV4   string
+	ebgpSessionV6   string
 	unicastprefixV4 string
 	unicastprefixV6 string
 	inetprefixV4    string
@@ -58,6 +60,9 @@ func init() {
 	flag.StringVar(&peer, "peer", "peer", "peer Collection name, default: \"peer\"")
 	flag.StringVar(&ebgpPeerV4, "ebgp_peer_v4", "ebgp_peer_v4", "ebgp_peer_v4 Collection name, default: \"ebgp_peer_v4\"")
 	flag.StringVar(&ebgpPeerV6, "ebgp_peer_v6", "ebgp_peer_v6", "ebgp_peer_v6 Collection name, default: \"ebgp_peer_v6\"")
+	flag.StringVar(&ebgpSessionV4, "ebgp_session_v4", "ebgp_session_v4", "ebgp_psession_v4 Collection name, default: \"ebgp_session_v4\"")
+	flag.StringVar(&ebgpSessionV6, "ebgp_session_v6", "ebgp_session_v6", "ebgp_session_v6 Collection name, default: \"ebgp_session_v6\"")
+
 	flag.StringVar(&unicastprefixV4, "unicast_prefix_v4", "unicast_prefix_v4", "unicast_prefix_v4 Collection name, default: \"unicast_prefix_v4\"")
 	flag.StringVar(&unicastprefixV6, "unicast_prefix_v6", "unicast_prefix_v6", "unicast_prefix_v6 Collection name, default: \"unicast_prefix_v6\"")
 	flag.StringVar(&inetprefixV4, "inet_prefix_v4", "inet_prefix_v4", "inet_prefix_v4 Collection name, default: \"inet_prefix_v4\"")
@@ -96,8 +101,8 @@ func main() {
 		glog.Errorf("failed to validate the database credentials with error: %+v", err)
 		os.Exit(1)
 	}
-	dbSrv, err := arangodb.NewDBSrvClient(dbSrvAddr, dbUser, dbPass, dbName, peer, ebgpPeerV4, ebgpPeerV6, unicastprefixV4, unicastprefixV6,
-		inetprefixV4, inetprefixV6)
+	dbSrv, err := arangodb.NewDBSrvClient(dbSrvAddr, dbUser, dbPass, dbName, peer, ebgpPeerV4, ebgpPeerV6, ebgpSessionV4,
+		ebgpSessionV6, unicastprefixV4, unicastprefixV6, inetprefixV4, inetprefixV6)
 	if err != nil {
 		glog.Errorf("failed to initialize database client with error: %+v", err)
 		os.Exit(1)
