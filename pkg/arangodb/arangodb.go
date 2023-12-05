@@ -3,6 +3,7 @@ package arangodb
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
 	driver "github.com/arangodb/go-driver"
 	"github.com/golang/glog"
@@ -448,111 +449,150 @@ func (a *arangoDB) monitor() {
 func (a *arangoDB) loadCollection() error {
 	ctx := context.TODO()
 
+	// Establish internal ipv4 eBGP peering sessions
 	glog.Infof("copying ipv4 eBGP peer sessions to ebgp_session_v4 collection")
-	peer_query := "for l in peer filter l._key !like " + "\"%:%\"" + " filter l.peer_asn !in 64512..65535 " +
+	ebgp4session_query := "for l in peer filter l._key !like " + "\"%:%\"" + " filter l.remote_asn in 64512..65535 " +
 		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v4"
-	cursor, err := a.db.Query(ctx, peer_query, nil)
+	cursor, err := a.db.Query(ctx, ebgp4session_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
 
-	// remove internal peer entries from collection
+	// remove iBGP sessions from collection
 	glog.Infof("removing any internal v4 sessions that got copied over to ebgp_session_v4 collection")
-	dup_query := "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+	dup4_query := "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
 		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
 		"FOR d IN duplicates FOR m IN ebgp_session_v4 FILTER d.asn == m.remote_asn remove m in ebgp_session_v4"
-	pcursor, err := a.db.Query(ctx, dup_query, nil)
+	pcursor, err := a.db.Query(ctx, dup4_query, nil)
 	if err != nil {
 		return err
 	}
 	defer pcursor.Close()
 
+	// Establish internal ipv6 eBGP peering sessions
 	glog.Infof("copying ipv6 eBGP v6 sessions to ebgp_session_v6 collection")
-	peerv6_query := "for l in peer filter l._key like " + "\"%:%\"" + " filter l.peer_asn !in 64512..65535 " +
+	ebgp6session_query := "for l in peer filter l._key like " + "\"%:%\"" + " filter l.remote_asn in 64512..65535 " +
 		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v6"
-	cursor, err = a.db.Query(ctx, peerv6_query, nil)
+	cursor, err = a.db.Query(ctx, ebgp6session_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
 
-	// remove internal peer entries from  collection
+	// remove ibgp sessions from  collection
 	glog.Infof("removing any internal v6 sessions that got copied over to ebgp_session_v4 collection")
-	dup_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+	dup6_query := "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
 		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
 		"FOR d IN duplicates FOR m IN ebgp_session_v6 FILTER d.asn == m.remote_asn remove m in ebgp_session_v6"
-	pcursor, err = a.db.Query(ctx, dup_query, nil)
+	pcursor, err = a.db.Query(ctx, dup6_query, nil)
 	if err != nil {
 		return err
 	}
 	defer pcursor.Close()
 
+	// Identify unique ipv4 eBGP peers
 	glog.Infof("copying unique ebgp peers into ebgp_peer_v4 collection")
-	peer_query = "for l in ebgp_session_v4 " +
+	ebgp4peer_query := "for l in ebgp_session_v4 " +
 		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
 		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO ebgp_peer_v4 OPTIONS { ignoreErrors: true }"
-	cursor, err = a.db.Query(ctx, peer_query, nil)
+	cursor, err = a.db.Query(ctx, ebgp4peer_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
 
+	// Identify unique ipv6 eBGP peers
 	glog.Infof("copying unique ebgp peers into ebgp_peer_v6 collection")
-	peer_query = "for l in ebgp_session_v6 " +
+	ebgp6peer_query := "for l in ebgp_session_v6 " +
 		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
 		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO ebgp_peer_v6 OPTIONS { ignoreErrors: true }"
-	cursor, err = a.db.Query(ctx, peer_query, nil)
+	cursor, err = a.db.Query(ctx, ebgp6peer_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
 
-	// glog.Infof("copying unicast v4 prefixes into inet_prefix_v4 collection")
-	// prefix_query := "for l in unicast_prefix_v4 filter l.filter l.prefix_len < 26 " +
-	// 	"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
-	// 	"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
-	// 	"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v4 OPTIONS { ignoreErrors: true }"
-	// cursor, err = a.db.Query(ctx, prefix_query, nil)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer cursor.Close()
+	// Establish Internet ipv4 eBGP peering sessions
+	glog.Infof("copying ipv4 eBGP peer sessions to inet_session_v4 collection")
+	inet4peer_query := "for l in peer filter l._key !like " + "\"%:%\"" + " filter l.remote_asn !in 64512..65535 " +
+		"filter l.remote_asn != l.local_asn insert l in inet_session_v4"
+	cursor, err = a.db.Query(ctx, inet4peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
 
-	// // remove internal prefix entries from collection
-	// glog.Infof("removing any internal v4 prefixes that got copied over to inet_prefix_v4 collection")
-	// dup_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
-	// 	"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-	// 	"FOR d IN duplicates FOR m IN inet_prefix_v4 FILTER m.prefix != " + "\"0.0.0.0\"" +
-	// 	" filter d.asn == m.origin_as remove m in inet_prefix_v4"
-	// pcursor, err = a.db.Query(ctx, dup_query, nil)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer pcursor.Close()
+	// remove iBGP sessions from collection
+	glog.Infof("removing any internal v4 sessions that got copied over to inet_session_v4 collection")
+	dup4_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
+		"FOR d IN duplicates FOR m IN inet_session_v4 FILTER d.asn == m.remote_asn remove m in inet_session_v4"
+	pcursor, err = a.db.Query(ctx, dup4_query, nil)
+	if err != nil {
+		return err
+	}
+	defer pcursor.Close()
 
-	// glog.Infof("copying unicast v6 prefixes into inet_prefix_v6 collection")
-	// prefix6_query := "for l in unicast_prefix_v6 filter l.prefix_len < 80 " +
-	// 	"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
-	// 	"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
-	// 	"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v6 OPTIONS { overwrite: true }"
-	// cursor, err = a.db.Query(ctx, prefix6_query, nil)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer cursor.Close()
+	// Establish internal ipv6 eBGP peering sessions
+	glog.Infof("copying ipv6 eBGP v6 sessions to inet_session_v6 collection")
+	inet6peer_query := "for l in peer filter l._key like " + "\"%:%\"" + " filter l.remote_asn !in 64512..65535 " +
+		"filter l.remote_asn != l.local_asn insert l in inet_session_v6"
+	cursor, err = a.db.Query(ctx, inet6peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
 
-	// // remove internal prefix entries from collection
-	// glog.Infof("removing any internal v6 prefixes that got copied over to inet_prefix_v6 collection")
-	// dup_query = "LET external = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
-	// 	"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-	// 	"FOR d IN external FOR m IN inet_prefix_v6 filter m.prefix_len < 96 filter m.remote_asn != m.origin_as " +
-	// 	"filter m.prefix != " + "\"::\" filter d.asn == m.origin_as remove m in inet_prefix_v6"
-	// pcursor, err = a.db.Query(ctx, dup_query, nil)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer pcursor.Close()
+	// remove ibgp sessions from  collection
+	glog.Infof("removing any internal v6 sessions that got copied over to inet_session_v4 collection")
+	dup6_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
+		"FOR d IN duplicates FOR m IN inet_session_v6 FILTER d.asn == m.remote_asn remove m in inet_session_v6"
+	pcursor, err = a.db.Query(ctx, dup6_query, nil)
+	if err != nil {
+		return err
+	}
+	defer pcursor.Close()
+
+	// Identify unique ipv4 eBGP peers
+	glog.Infof("copying unique Internet ebgp peers into inet_peer_v4 collection")
+	inet4peer_query = "for l in inet_session_v4 " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
+		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO inet_peer_v4 OPTIONS { ignoreErrors: true }"
+	cursor, err = a.db.Query(ctx, inet4peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
+	// Identify unique ipv6 eBGP peers
+	glog.Infof("copying unique Internet ebgp peers into inet_peer_v6 collection")
+	inet6peer_query = "for l in inet_session_v6 " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.remote_bgp_id, l.remote_asn), bgp_router_id: l.remote_bgp_id, " +
+		"asn: l.remote_asn, adv_cap: l.adv_cap } INTO inet_peer_v6 OPTIONS { ignoreErrors: true }"
+	cursor, err = a.db.Query(ctx, inet6peer_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
+	// get internal ASN so we can determine whether this is an external prefix or not
+	getasn := "for l in ls_node_extended limit 1 return l"
+	cursor, err = a.db.Query(ctx, getasn, nil)
+	if err != nil {
+		return err
+	}
+
+	var ln LSNodeExt
+	lm, err := cursor.ReadDocument(ctx, &ln)
+	glog.Infof("meta %+v", lm)
+	if err != nil {
+		if !driver.IsNoMoreDocuments(err) {
+			return err
+		}
+	}
+	internalASN := strconv.Itoa(int(ln.ASN))
 
 	glog.Infof("copying unicast v4 prefixes into ebgp_prefix_v4 collection")
 	ebgp4_query := "for l in unicast_prefix_v4 filter l.origin_as in 64512..65535 filter l.prefix_len < 26 " +
@@ -568,6 +608,7 @@ func (a *arangoDB) loadCollection() error {
 	glog.Infof("copying unicast v4 prefixes into inet_prefix_v4 collection")
 	inet4_query := "for l in unicast_prefix_v4 filter l.peer_asn !in 64512..65535 filter l.prefix_len < 26 " +
 		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
+		"filter l.base_attrs.as_path not like " + "\"%" + internalASN + "%\"" +
 		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
 		"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v4 OPTIONS { ignoreErrors: true }"
 	cursor, err = a.db.Query(ctx, inet4_query, nil)
@@ -590,7 +631,8 @@ func (a *arangoDB) loadCollection() error {
 	glog.Infof("copying internet unicast v6 prefixes into inet_prefix_v6 collection")
 	inet6_query := "for l in unicast_prefix_v6 filter l.peer_asn !in 64512..65535 filter l.prefix_len < 80 " +
 		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
-		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
+		"filter l.base_attrs.as_path not like " + "\"%" + internalASN + "%\"" +
+		" INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
 		"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v6 OPTIONS { overwrite: true }"
 	cursor, err = a.db.Query(ctx, inet6_query, nil)
 	if err != nil {
