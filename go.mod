@@ -1,6 +1,6 @@
 module www.github.com/jalapeno/ebgp-processor
 
-go 1.17
+go 1.21
 
 require (
 	github.com/Shopify/sarama v1.35.0
@@ -9,6 +9,7 @@ require (
 	github.com/jalapeno/topology v0.0.0-20220218221732-e7e90a9431b1
 	github.com/sbezverk/gobmp v1.0.3-0.20230414141753-29b5fa2e1103
 	github.com/sbezverk/gobmp/pkg/tools v0.0.0-20200507134823-d53b60020204
+	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 )
 
 require (

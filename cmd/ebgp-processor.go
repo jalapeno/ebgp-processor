@@ -37,25 +37,31 @@ var (
 	ebgpPeerV6      string
 	ebgpSessionV4   string
 	ebgpSessionV6   string
+	inetPeerV4      string
+	inetPeerV6      string
+	inetSessionV4   string
+	inetSessionV6   string
 	unicastprefixV4 string
 	unicastprefixV6 string
+	ebgpprefixV4    string
+	ebgpprefixV6    string
 	inetprefixV4    string
 	inetprefixV6    string
 )
 
 func init() {
 	runtime.GOMAXPROCS(1)
-	flag.StringVar(&msgSrvAddr, "message-server", "", "URL to the messages supplying server")
-	flag.StringVar(&dbSrvAddr, "database-server", "", "{dns name}:port or X.X.X.X:port of the graph database")
-	flag.StringVar(&dbName, "database-name", "", "DB name")
-	flag.StringVar(&dbUser, "database-user", "", "DB User name")
-	flag.StringVar(&dbPass, "database-pass", "", "DB User's password")
+	// flag.StringVar(&msgSrvAddr, "message-server", "", "URL to the messages supplying server")
+	// flag.StringVar(&dbSrvAddr, "database-server", "", "{dns name}:port or X.X.X.X:port of the graph database")
+	// flag.StringVar(&dbName, "database-name", "", "DB name")
+	// flag.StringVar(&dbUser, "database-user", "", "DB User name")
+	// flag.StringVar(&dbPass, "database-pass", "", "DB User's password")
 
-	// flag.StringVar(&msgSrvAddr, "message-server", "198.18.133.103:30092", "URL to the messages supplying server")
-	// flag.StringVar(&dbSrvAddr, "database-server", "http://198.18.133.103:30852", "{dns name}:port or X.X.X.X:port of the graph database")
-	// flag.StringVar(&dbName, "database-name", "jalapeno", "DB name")
-	// flag.StringVar(&dbUser, "database-user", "root", "DB User name")
-	// flag.StringVar(&dbPass, "database-pass", "jalapeno", "DB User's password")
+	flag.StringVar(&msgSrvAddr, "message-server", "198.18.133.103:30092", "URL to the messages supplying server")
+	flag.StringVar(&dbSrvAddr, "database-server", "http://198.18.133.103:30852", "{dns name}:port or X.X.X.X:port of the graph database")
+	flag.StringVar(&dbName, "database-name", "jalapeno", "DB name")
+	flag.StringVar(&dbUser, "database-user", "root", "DB User name")
+	flag.StringVar(&dbPass, "database-pass", "jalapeno", "DB User's password")
 
 	flag.StringVar(&peer, "peer", "peer", "peer Collection name, default: \"peer\"")
 	flag.StringVar(&ebgpPeerV4, "ebgp_peer_v4", "ebgp_peer_v4", "ebgp_peer_v4 Collection name, default: \"ebgp_peer_v4\"")
@@ -63,10 +69,18 @@ func init() {
 	flag.StringVar(&ebgpSessionV4, "ebgp_session_v4", "ebgp_session_v4", "ebgp_psession_v4 Collection name, default: \"ebgp_session_v4\"")
 	flag.StringVar(&ebgpSessionV6, "ebgp_session_v6", "ebgp_session_v6", "ebgp_session_v6 Collection name, default: \"ebgp_session_v6\"")
 
+	flag.StringVar(&inetPeerV4, "inet_peer_v4", "inet_peer_v4", "inet_peer_v4 Collection name, default: \"inet_peer_v4\"")
+	flag.StringVar(&inetPeerV6, "inet_peer_v6", "inet_peer_v6", "inet_peer_v6 Collection name, default: \"inet_peer_v6\"")
+	flag.StringVar(&inetSessionV4, "inet_session_v4", "inet_session_v4", "inet_psession_v4 Collection name, default: \"inet_session_v4\"")
+	flag.StringVar(&inetSessionV6, "inet_session_v6", "inet_session_v6", "inet_session_v6 Collection name, default: \"inet_session_v6\"")
+
 	flag.StringVar(&unicastprefixV4, "unicast_prefix_v4", "unicast_prefix_v4", "unicast_prefix_v4 Collection name, default: \"unicast_prefix_v4\"")
 	flag.StringVar(&unicastprefixV6, "unicast_prefix_v6", "unicast_prefix_v6", "unicast_prefix_v6 Collection name, default: \"unicast_prefix_v6\"")
+	flag.StringVar(&ebgpprefixV4, "ebgp_prefix_v4", "ebgp_prefix_v4", "ebgp_prefix_v4 Collection name, default: \"ebgp_prefix_v4\"")
+	flag.StringVar(&ebgpprefixV6, "ebgp_prefix_v6", "ebgp_prefix_v6", "ebgp_prefix_v6 Collection name, default: \"ebgp_prefix_v6\"")
 	flag.StringVar(&inetprefixV4, "inet_prefix_v4", "inet_prefix_v4", "inet_prefix_v4 Collection name, default: \"inet_prefix_v4\"")
 	flag.StringVar(&inetprefixV6, "inet_prefix_v6", "inet_prefix_v6", "inet_prefix_v6 Collection name, default: \"inet_prefix_v6\"")
+
 }
 
 var (
@@ -102,7 +116,8 @@ func main() {
 		os.Exit(1)
 	}
 	dbSrv, err := arangodb.NewDBSrvClient(dbSrvAddr, dbUser, dbPass, dbName, peer, ebgpPeerV4, ebgpPeerV6, ebgpSessionV4,
-		ebgpSessionV6, unicastprefixV4, unicastprefixV6, inetprefixV4, inetprefixV6)
+		ebgpSessionV6, inetPeerV4, inetPeerV6, inetSessionV4, inetSessionV6, unicastprefixV4, unicastprefixV6, ebgpprefixV4,
+		ebgpprefixV6, inetprefixV4, inetprefixV6)
 	if err != nil {
 		glog.Errorf("failed to initialize database client with error: %+v", err)
 		os.Exit(1)

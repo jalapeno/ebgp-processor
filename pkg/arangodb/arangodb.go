@@ -21,15 +21,22 @@ type arangoDB struct {
 	ebgpPeerV6      driver.Collection
 	ebgpSessionV4   driver.Collection
 	ebgpSessionV6   driver.Collection
+	inetPeerV4      driver.Collection
+	inetPeerV6      driver.Collection
+	inetSessionV4   driver.Collection
+	inetSessionV6   driver.Collection
 	unicastprefixV4 driver.Collection
 	unicastprefixV6 driver.Collection
+	ebgpprefixV4    driver.Collection
+	ebgpprefixV6    driver.Collection
 	inetprefixV4    driver.Collection
 	inetprefixV6    driver.Collection
 }
 
 // NewDBSrvClient returns an instance of a DB server client process
 func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgpPeerV6 string, ebgpSessionV4 string,
-	ebgpSessionV6 string, unicastprefixV4, unicastprefixV6, inetprefixV4 string, inetprefixV6 string) (dbclient.Srv, error) {
+	ebgpSessionV6 string, inetPeerV4 string, inetPeerV6 string, inetSessionV4 string, inetSessionV6 string,
+	unicastprefixV4, unicastprefixV6, ebgpprefixV4, ebgpprefixV6, inetprefixV4 string, inetprefixV6 string) (dbclient.Srv, error) {
 	if err := tools.URLAddrValidation(arangoSrv); err != nil {
 		return nil, err
 	}
@@ -94,7 +101,7 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		}
 	}
 
-	// check for ebgp_peer_v4 collection
+	// check for ebgp_session_v4 collection
 	found, err = arango.db.CollectionExists(context.TODO(), ebgpSessionV4)
 	if err != nil {
 		return nil, err
@@ -109,7 +116,7 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		}
 	}
 
-	// check for ebgp_peer_v6 collection
+	// check for ebgp_session_v6 collection
 	found, err = arango.db.CollectionExists(context.TODO(), ebgpSessionV6)
 	if err != nil {
 		return nil, err
@@ -124,7 +131,96 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		}
 	}
 
-	// check for inet4 collection
+	// check for inet_peer_v4 collection
+	found, err = arango.db.CollectionExists(context.TODO(), inetPeerV4)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), inetPeerV4)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for inet_peer_v6 collection
+	found, err = arango.db.CollectionExists(context.TODO(), inetPeerV6)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), inetPeerV6)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for inet_session_v4 collection
+	found, err = arango.db.CollectionExists(context.TODO(), inetSessionV4)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), inetSessionV4)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for inet_session_v6 collection
+	found, err = arango.db.CollectionExists(context.TODO(), inetSessionV6)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), inetSessionV6)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for ebgp4 prefix collection
+	found, err = arango.db.CollectionExists(context.TODO(), ebgpprefixV4)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), ebgpprefixV4)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+	// check for ebgp6 prefix collection
+	found, err = arango.db.CollectionExists(context.TODO(), ebgpprefixV6)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		c, err := arango.db.Collection(context.TODO(), ebgpprefixV6)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Remove(context.TODO()); err != nil {
+			return nil, err
+		}
+	}
+
+	// check for inet4 prefix collection
 	found, err = arango.db.CollectionExists(context.TODO(), inetprefixV4)
 	if err != nil {
 		return nil, err
@@ -138,7 +234,7 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 			return nil, err
 		}
 	}
-	// check for inet6 collection
+	// check for inet6 prefix collection
 	found, err = arango.db.CollectionExists(context.TODO(), inetprefixV6)
 	if err != nil {
 		return nil, err
@@ -153,7 +249,7 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		}
 	}
 
-	// create ebgp_peer_v4 edge collection
+	// create ebgp_peer_v4 collection
 	var ebgpPeerV4_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.ebgpPeerV4, err = arango.db.CreateCollection(context.TODO(), "ebgp_peer_v4", ebgpPeerV4_options)
 	if err != nil {
@@ -165,19 +261,19 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		return nil, err
 	}
 
-	// create ebgp_peer_v4 edge collection
+	// create ebgp_peer_v6 collection
 	var ebgpPeerV6_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.ebgpPeerV6, err = arango.db.CreateCollection(context.TODO(), "ebgp_peer_v6", ebgpPeerV6_options)
 	if err != nil {
 		return nil, err
 	}
 	// check if collection exists, if not fail as processor has failed to create collection
-	arango.ebgpPeerV4, err = arango.db.Collection(context.TODO(), ebgpPeerV4)
+	arango.ebgpPeerV6, err = arango.db.Collection(context.TODO(), ebgpPeerV6)
 	if err != nil {
 		return nil, err
 	}
 
-	// create ebgp_peer_v4 edge collection
+	// create ebgp_session_v4 collection
 	var ebgpSessionV4_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.ebgpSessionV4, err = arango.db.CreateCollection(context.TODO(), "ebgp_session_v4", ebgpSessionV4_options)
 	if err != nil {
@@ -189,19 +285,91 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		return nil, err
 	}
 
-	// create ebgp_peer_v4 edge collection
+	// create ebgp_session_v6 collection
 	var ebgpSessionV6_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.ebgpSessionV6, err = arango.db.CreateCollection(context.TODO(), "ebgp_session_v6", ebgpSessionV6_options)
 	if err != nil {
 		return nil, err
 	}
 	// check if collection exists, if not fail as processor has failed to create collection
-	arango.ebgpPeerV4, err = arango.db.Collection(context.TODO(), ebgpPeerV4)
+	arango.ebgpSessionV6, err = arango.db.Collection(context.TODO(), ebgpSessionV4)
 	if err != nil {
 		return nil, err
 	}
 
-	// create inet prefix V4 edge collection
+	// create inet_peer_v4 collection
+	var inetPeerV4_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.inetPeerV4, err = arango.db.CreateCollection(context.TODO(), "inet_peer_v4", inetPeerV4_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.inetPeerV4, err = arango.db.Collection(context.TODO(), inetPeerV4)
+	if err != nil {
+		return nil, err
+	}
+
+	// create inet_peer_v6 collection
+	var inetPeerV6_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.inetPeerV6, err = arango.db.CreateCollection(context.TODO(), "inet_peer_v6", inetPeerV6_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.inetPeerV6, err = arango.db.Collection(context.TODO(), inetPeerV6)
+	if err != nil {
+		return nil, err
+	}
+
+	// create inet_session_v4 collection
+	var inetSessionV4_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.ebgpSessionV4, err = arango.db.CreateCollection(context.TODO(), "inet_session_v4", inetSessionV4_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.inetSessionV4, err = arango.db.Collection(context.TODO(), inetSessionV4)
+	if err != nil {
+		return nil, err
+	}
+
+	// create inet_session_v6 collection
+	var inetSessionV6_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.inetSessionV6, err = arango.db.CreateCollection(context.TODO(), "inet_session_v6", inetSessionV6_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.inetSessionV6, err = arango.db.Collection(context.TODO(), inetSessionV6)
+	if err != nil {
+		return nil, err
+	}
+
+	// create ebgp prefix V4 collection
+	var ebgpprefixV4_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.ebgpprefixV4, err = arango.db.CreateCollection(context.TODO(), "ebgp_prefix_v4", ebgpprefixV4_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.ebgpprefixV4, err = arango.db.Collection(context.TODO(), ebgpprefixV4)
+	if err != nil {
+		return nil, err
+	}
+
+	// create ebgp prefix V6 collection
+	var ebgpprefixV6_options = &driver.CreateCollectionOptions{ /* ... */ }
+	arango.ebgpprefixV6, err = arango.db.CreateCollection(context.TODO(), "ebgp_prefix_v6", ebgpprefixV6_options)
+	if err != nil {
+		return nil, err
+	}
+	// check if collection exists, if not fail as processor has failed to create collection
+	arango.ebgpprefixV6, err = arango.db.Collection(context.TODO(), ebgpprefixV6)
+	if err != nil {
+		return nil, err
+	}
+
+	// create inet prefix V4 collection
 	var inetV4_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.inetprefixV4, err = arango.db.CreateCollection(context.TODO(), "inet_prefix_v4", inetV4_options)
 	if err != nil {
@@ -213,7 +381,7 @@ func NewDBSrvClient(arangoSrv, user, pass, dbname, peer, ebgpPeerV4 string, ebgp
 		return nil, err
 	}
 
-	// create unicast prefix V6 edge collection
+	// create unicast prefix V6 collection
 	var inetV6_options = &driver.CreateCollectionOptions{ /* ... */ }
 	arango.inetprefixV6, err = arango.db.CreateCollection(context.TODO(), "inet_prefix_v6", inetV6_options)
 	if err != nil {
@@ -281,7 +449,7 @@ func (a *arangoDB) loadCollection() error {
 	ctx := context.TODO()
 
 	glog.Infof("copying ipv4 eBGP peer sessions to ebgp_session_v4 collection")
-	peer_query := "for l in peer filter l._key !like " + "\"%:%\"" +
+	peer_query := "for l in peer filter l._key !like " + "\"%:%\"" + " filter l.peer_asn !in 64512..65535 " +
 		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v4"
 	cursor, err := a.db.Query(ctx, peer_query, nil)
 	if err != nil {
@@ -301,7 +469,7 @@ func (a *arangoDB) loadCollection() error {
 	defer pcursor.Close()
 
 	glog.Infof("copying ipv6 eBGP v6 sessions to ebgp_session_v6 collection")
-	peerv6_query := "for l in peer filter l._key like " + "\"%:%\"" +
+	peerv6_query := "for l in peer filter l._key like " + "\"%:%\"" + " filter l.peer_asn !in 64512..65535 " +
 		"filter l.remote_asn != l.local_asn insert l in ebgp_session_v6"
 	cursor, err = a.db.Query(ctx, peerv6_query, nil)
 	if err != nil {
@@ -340,51 +508,95 @@ func (a *arangoDB) loadCollection() error {
 	}
 	defer cursor.Close()
 
+	// glog.Infof("copying unicast v4 prefixes into inet_prefix_v4 collection")
+	// prefix_query := "for l in unicast_prefix_v4 filter l.filter l.prefix_len < 26 " +
+	// 	"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
+	// 	"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
+	// 	"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v4 OPTIONS { ignoreErrors: true }"
+	// cursor, err = a.db.Query(ctx, prefix_query, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer cursor.Close()
+
+	// // remove internal prefix entries from collection
+	// glog.Infof("removing any internal v4 prefixes that got copied over to inet_prefix_v4 collection")
+	// dup_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+	// 	"FILTER count > 1 RETURN { asn: asn, count: count }) " +
+	// 	"FOR d IN duplicates FOR m IN inet_prefix_v4 FILTER m.prefix != " + "\"0.0.0.0\"" +
+	// 	" filter d.asn == m.origin_as remove m in inet_prefix_v4"
+	// pcursor, err = a.db.Query(ctx, dup_query, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer pcursor.Close()
+
+	// glog.Infof("copying unicast v6 prefixes into inet_prefix_v6 collection")
+	// prefix6_query := "for l in unicast_prefix_v6 filter l.prefix_len < 80 " +
+	// 	"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
+	// 	"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
+	// 	"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v6 OPTIONS { overwrite: true }"
+	// cursor, err = a.db.Query(ctx, prefix6_query, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer cursor.Close()
+
+	// // remove internal prefix entries from collection
+	// glog.Infof("removing any internal v6 prefixes that got copied over to inet_prefix_v6 collection")
+	// dup_query = "LET external = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
+	// 	"FILTER count > 1 RETURN { asn: asn, count: count }) " +
+	// 	"FOR d IN external FOR m IN inet_prefix_v6 filter m.prefix_len < 96 filter m.remote_asn != m.origin_as " +
+	// 	"filter m.prefix != " + "\"::\" filter d.asn == m.origin_as remove m in inet_prefix_v6"
+	// pcursor, err = a.db.Query(ctx, dup_query, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer pcursor.Close()
+
+	glog.Infof("copying unicast v4 prefixes into ebgp_prefix_v4 collection")
+	ebgp4_query := "for l in unicast_prefix_v4 filter l.origin_as in 64512..65535 filter l.prefix_len < 26 " +
+		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
+		"origin_as: l.origin_as, nexthop: l.nexthop } INTO ebgp_prefix_v4 OPTIONS { ignoreErrors: true }"
+	cursor, err = a.db.Query(ctx, ebgp4_query, nil)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
 	glog.Infof("copying unicast v4 prefixes into inet_prefix_v4 collection")
-	prefix_query := "for l in unicast_prefix_v4 filter l.prefix_len < 26 " +
+	inet4_query := "for l in unicast_prefix_v4 filter l.peer_asn !in 64512..65535 filter l.prefix_len < 26 " +
 		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
 		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
 		"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v4 OPTIONS { ignoreErrors: true }"
-	cursor, err = a.db.Query(ctx, prefix_query, nil)
+	cursor, err = a.db.Query(ctx, inet4_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
 
-	// remove internal prefix entries from collection
-	glog.Infof("removing any internal v4 prefixes that got copied over to inet_prefix_v4 collection")
-	dup_query = "LET duplicates = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
-		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-		"FOR d IN duplicates FOR m IN inet_prefix_v4 FILTER m.prefix != " + "\"0.0.0.0\"" +
-		" filter d.asn == m.origin_as remove m in inet_prefix_v4"
-	pcursor, err = a.db.Query(ctx, dup_query, nil)
+	glog.Infof("copying ebgp unicast v6 prefixes into ebgp_prefix_v6 collection")
+	ebgp6_query := "for l in unicast_prefix_v6 filter l.origin_as in 64512..65535 filter l.prefix_len < 80 " +
+		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
+		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
+		"origin_as: l.origin_as, nexthop: l.nexthop } INTO ebgp_prefix_v6 OPTIONS { overwrite: true }"
+	cursor, err = a.db.Query(ctx, ebgp6_query, nil)
 	if err != nil {
 		return err
 	}
-	defer pcursor.Close()
+	defer cursor.Close()
 
-	glog.Infof("copying unicast v6 prefixes into inet_prefix_v6 collection")
-	prefix6_query := "for l in unicast_prefix_v6 filter l.prefix_len < 80 " +
+	glog.Infof("copying internet unicast v6 prefixes into inet_prefix_v6 collection")
+	inet6_query := "for l in unicast_prefix_v6 filter l.peer_asn !in 64512..65535 filter l.prefix_len < 80 " +
 		"filter l.remote_asn != l.origin_as filter l.base_attrs.local_pref == null " +
 		"INSERT { _key: CONCAT_SEPARATOR(" + "\"_\", l.prefix, l.prefix_len), prefix: l.prefix, prefix_len: l.prefix_len, " +
 		"origin_as: l.origin_as, nexthop: l.nexthop } INTO inet_prefix_v6 OPTIONS { overwrite: true }"
-	cursor, err = a.db.Query(ctx, prefix6_query, nil)
+	cursor, err = a.db.Query(ctx, inet6_query, nil)
 	if err != nil {
 		return err
 	}
 	defer cursor.Close()
-
-	// remove internal prefix entries from collection
-	glog.Infof("removing any internal v6 prefixes that got copied over to inet_prefix_v6 collection")
-	dup_query = "LET external = ( FOR d IN ls_node_extended COLLECT asn = d.asn WITH COUNT INTO count " +
-		"FILTER count > 1 RETURN { asn: asn, count: count }) " +
-		"FOR d IN external FOR m IN inet_prefix_v6 filter m.prefix_len < 96 filter m.remote_asn != m.origin_as " +
-		"filter m.prefix != " + "\"::\" filter d.asn == m.origin_as remove m in inet_prefix_v6"
-	pcursor, err = a.db.Query(ctx, dup_query, nil)
-	if err != nil {
-		return err
-	}
-	defer pcursor.Close()
 
 	return nil
 }
