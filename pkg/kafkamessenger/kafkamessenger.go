@@ -100,7 +100,7 @@ func (k *kafka) topicReader(topicType dbclient.CollectionType, topicName string)
 					continue
 				}
 				if err := k.db.StoreMessage(topicType, msg.Value); err != nil {
-					glog.Errorf("failed to process a message from topic %s with error: %+v", topicName, err)
+					glog.Errorf("failed to process message from topic %s with error: %+v", topicName, err)
 				}
 			case consumerError := <-consumer.Errors():
 				if consumerError == nil {
