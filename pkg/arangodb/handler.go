@@ -30,19 +30,19 @@ func (a *arangoDB) peerHandler(obj *notifier.EventMessage) error {
 		if !driver.IsNotFound(err) {
 			return fmt.Errorf("failed to read existing document %s with error: %+v", obj.Key, err)
 		}
-		// If operation matches to "del" then it is confirmed delete operation, otherwise return error
+		// If operation matches to "down" then it is confirmed delete operation, otherwise return error
 		if obj.Action != "down" {
 			return fmt.Errorf("document %s not found but Action is not \"del\", possible stale event", obj.Key)
 		}
-		glog.Infof("del action %+v", obj.Key)
-		return a.processPeerSessionRemoval(ctx, obj.Key, &o)
+		glog.Infof("del action %+v", obj)
+		//return nil //a.processPeerSessionRemoval(ctx, obj.Key, &o)
 	}
 	switch obj.Action {
 	case "add":
 		fallthrough
 	case "update":
-		glog.Infof("adding %+v, obj: %+v", obj.Key, &o)
-		if err := a.processebgpPeer(ctx, obj.Key, obj.ID, o); err != nil {
+		//glog.Infof("adding %+v, obj: %+v", obj.Key, &o)
+		if err := a.processBgpNode(ctx, obj.Key, obj.ID, o); err != nil {
 			return fmt.Errorf("failed to process action %s for vertex %s with error: %+v", obj.Action, obj.Key, err)
 		}
 	case "down":

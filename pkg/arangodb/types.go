@@ -63,3 +63,7 @@ type ebgpPeer struct {
 	ASN             int32          `json:"asn"`
 	AdvCapabilities bgp.Capability `json:"adv_cap,omitempty"`
 }
+
+type (
+	peerCount int
+)
