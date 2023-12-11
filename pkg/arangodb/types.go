@@ -59,7 +59,7 @@ type LSNodeExt struct {
 type ebgpPeer struct {
 	Key             string         `json:"_key,omitempty"`
 	ID              string         `json:"_id,omitempty"`
-	BGPRouterID     string         `json:"router_id,omitempty"`
+	BGPRouterID     string         `json:"bgp_router_id,omitempty"`
 	ASN             int32          `json:"asn"`
 	AdvCapabilities bgp.Capability `json:"adv_cap,omitempty"`
 }

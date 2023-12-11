@@ -64,7 +64,6 @@ func init() {
 	flag.StringVar(&ebgpprefixV6, "ebgp_prefix_v6", "ebgp_prefix_v6", "ebgp_prefix_v6 Collection name, default: \"ebgp_prefix_v6\"")
 	flag.StringVar(&inetprefixV4, "inet_prefix_v4", "inet_prefix_v4", "inet_prefix_v4 Collection name, default: \"inet_prefix_v4\"")
 	flag.StringVar(&inetprefixV6, "inet_prefix_v6", "inet_prefix_v6", "inet_prefix_v6 Collection name, default: \"inet_prefix_v6\"")
-
 }
 
 var (
